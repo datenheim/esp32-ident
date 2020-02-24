@@ -16,6 +16,7 @@ __asm volatile("nop");
 #include "esp_spiffs.h"
 #include "WiFi.h"
 #include "FS.h"
+#include <Board_Identify.h>
 
 void printHex(int num, int precision, bool NewLine)
 {
@@ -35,63 +36,93 @@ void printHex(int num, int precision, bool NewLine)
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(115200 );
 
   // Set WiFi to station mode and disconnect from an AP if it was previously connected
   WiFi.mode(WIFI_MODE_STA);
   WiFi.disconnect();
-  delay(100);
+  delay(1000);
   Serial.println();
-  Serial.println("Wifi-Setup done");
+  Serial.println("\r\nWifi-Setup done");
 
   pinMode(LED_BUILTIN, OUTPUT);
 
   //ADC_MODE(ADC_VCC);
+  Serial.print(F("Board Identification\r\n"));
+  Serial.print(F("Board Type: "));
+  Serial.println(BoardIdentify::type);
+  Serial.print(F("Board Make: "));
+  Serial.println(BoardIdentify::make);
+  Serial.print(F("Board Model: "));
+  Serial.println(BoardIdentify::model);
+  Serial.print(F("Board MCU: "));
+  Serial.println(BoardIdentify::mcu);
 
   Serial.println("\r\nCPU Information");
-  Serial.print("Chip-ID (MAC)    : ");
+  Serial.print("Chip-IP            : ");
   printHex(ESP.getEfuseMac(), 8, true);
-  Serial.print("Chip-Revision    : ");
-  printHex(ESP.getChipRevision(), 2, true);
-  Serial.print("SDK-Version      : ");
+  Serial.print("Chip-Revision      : ");
+  Serial.println(ESP.getChipRevision());
+  Serial.print("SDK-Version        : ");
   Serial.println(ESP.getSdkVersion());
-  Serial.print("Core-Clock  (MHz): ");
+  Serial.print("Core-Clock  (MHz)  : ");
   Serial.println(ESP.getCpuFreqMHz());
 
+  // some very basic benchmarking
   uint32_t before, after;
+  Serial.print("Cycles per ms delay: ");
   before = ESP.getCycleCount();
   delayMicroseconds(1000);
   after = ESP.getCycleCount();
-  Serial.print("Cycles/ms delay  : ");
   Serial.println(abs(after - before));
+  Serial.print("Estimated Core-Clk : ");
+  Serial.print(int(abs((after - before)/1000)));
+  Serial.println(" MHz\r\n");
 
+  Serial.print("Math-Benchmark (");
   float a = 0.0f;
   float b = PI;
+  const int cmax = 5000;
+  Serial.print(cmax);
   before = ESP.getCycleCount();
-  for (int cnt = 0; cnt < 99; cnt++)
+  Serial.println(" Iterations)");
+  for (int cnt = 0; cnt < 5000; cnt++)
   {
     a = sqrt(b);
     b = a * (float)cnt;
+    a = b / log2((float)cnt);
   }
   after = ESP.getCycleCount();
-  Serial.print("Cycles (100SQRT*): ");
+  Serial.print("Bench Clock Cycles : ");
   Serial.println(abs(after - before));
+  Serial.print("µs / Iteration     : ");
+  Serial.println((float)abs(after - before)/(float)cmax/(float)ESP.getCpuFreqMHz());
 
   Serial.println("\r\nMEMORY Information");
-  Serial.print("Flash-Mode       : ");
+  Serial.print("Flash-ID           : ");
   Serial.println(ESP.getFlashChipMode());
-  Serial.print("Flash-Size  (SDK): ");
+  Serial.print("Flash-Size (real)  : ");
   Serial.println(ESP.getFlashChipSize());
-  Serial.print("Flash-Speed (MHz): ");
+  Serial.print("Flash-Speed (MHz)  : ");
   Serial.println(ESP.getFlashChipSpeed() / 1000000);
-  Serial.print("Sketch-Size      : ");
+  Serial.print("Sketch-Size        : ");
   Serial.println(ESP.getSketchSize());
-  Serial.print("Sketch-Free      : ");
+  Serial.print("Sketch-Free        : ");
   Serial.println(ESP.getFreeSketchSpace());
-  Serial.print("Sketch-MD5       : ");
+  Serial.print("Sketch-MD5         : ");
   Serial.println(ESP.getSketchMD5());
-  Serial.print("Free Heap Space  : ");
+  Serial.print("Max Alloc psRAM    : ");
+  Serial.println(ESP.getMaxAllocPsram());
+  Serial.print("Free psRAM         : ");
+  Serial.println(ESP.getFreePsram());
+  Serial.print("Free Heap Size     : ");
+  Serial.println(ESP.getHeapSize());
+  Serial.print("Free Heap Space    : ");
   Serial.println(ESP.getFreeHeap());
+  Serial.print("Heap min Free Heap : ");
+  Serial.println(ESP.getMinFreeHeap());
+  Serial.print("Max Heap Alloc     : ");
+  Serial.println(ESP.getMaxAllocHeap());
 
   //http://esp8266.github.io/Arduino/versions/2.0.0/doc/filesystem.html#uploading-files-to-file-system
   //Activate SPI file system
